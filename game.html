@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fortnite Professional Lobby</title>
+
+<style>
+:root{
+--fn-yellow:#ffff00;
+--fn-blue:#0066ff;
+}
+
+body,html{
+margin:0;
+padding:0;
+width:100%;
+height:100%;
+overflow:hidden;
+font-family:Segoe UI,Arial;
+background:black;
+color:white;
+}
+
+.screen{
+position:absolute;
+width:100%;
+height:100%;
+display:flex;
+transition:opacity 1s;
+}
+
+.hidden{
+display:none!important;
+}
+
+/* شاشة التحميل */
+.loading-bg{
+background:radial-gradient(circle,#1a1a1a,#000);
+justify-content:center;
+align-items:center;
+flex-direction:column;
+z-index:10;
+}
+
+.loading-bar-container{
+width:80%;
+max-width:600px;
+text-align:center;
+}
+
+.loading-status{
+font-size:22px;
+margin-bottom:15px;
+color:var(--fn-yellow);
+letter-spacing:2px;
+}
+
+.bar-outer{
+width:100%;
+height:14px;
+background:rgba(255,255,255,0.1);
+border-radius:20px;
+padding:3px;
+}
+
+#fill{
+width:0%;
+height:100%;
+background:linear-gradient(90deg,#ffd700,#fff);
+border-radius:20px;
+box-shadow:0 0 20px #ffd700;
+transition:width .3s;
+}
+
+/* شاشة اللوبي */
+.lobby-bg{
+background:url("https://styledme.com/wp-content/uploads/2020/09/fortnite-background-virtual-backgrounds-for-zoom-meetings.jpg") center/cover no-repeat;
+align-items:flex-end;
+justify-content:center;
+position:relative;
+}
+
+/* السكن */
+.character-model{
+position:absolute;
+bottom:0;
+height:85vh;
+max-width:40%;
+z-index:2; /* أعلى من الباص */
+animation:float 4s ease-in-out infinite;
+filter:drop-shadow(0 0 20px rgba(0,0,0,.5));
+}
+
+@keyframes float{
+0%,100%{transform:translateY(0)}
+50%{transform:translateY(-15px)}
+}
+
+/* زر اللعب */
+.play-section{
+position:absolute;
+bottom:50px;
+right:50px;
+display:flex;
+flex-direction:column;
+align-items:center;
+z-index:10;
+}
+
+.mode-tag{
+background:var(--fn-blue);
+padding:8px 40px;
+font-weight:bold;
+margin-bottom:-10px;
+clip-path:polygon(10% 0,100% 0,90% 100%,0 100%);
+}
+
+#play-btn{
+background:var(--fn-yellow);
+color:black;
+border:none;
+width:300px;
+padding:20px;
+font-size:40px;
+font-weight:900;
+cursor:pointer;
+clip-path:polygon(8% 0,100% 0,92% 100%,0 100%);
+box-shadow:0 8px 0 #b3b300;
+transition:.2s;
+}
+
+#play-btn:hover{
+background:white;
+transform:scale(1.05);
+}
+
+#play-btn:disabled{
+background:#555;
+color:#888;
+box-shadow:0 8px 0 #333;
+cursor:not-allowed;
+}
+
+/* Battle Bus */
+#battleBus{
+position:absolute;
+top:50px;
+right:-400px; /* يبدأ خارج يمين الشاشة */
+width:420px;
+display:none;
+z-index:1; /* خلف السكن */
+animation:busFly 5s linear forwards; /* أسرع قليلاً */
+}
+
+@keyframes busFly{
+0%{ right:-400px; top:50px; }
+50%{ right:200px; top:120px; }
+100%{ right:150px; top:200px; }
+}
+
+/* نافذة الخطأ */
+.modal{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.85);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:100;
+}
+
+.modal-content{
+background:#111;
+padding:40px;
+border-top:5px solid red;
+text-align:center;
+max-width:400px;
+}
+
+.close-btn{
+background:#333;
+color:white;
+border:1px solid #444;
+padding:10px 40px;
+margin-top:20px;
+cursor:pointer;
+}
+
+.close-btn:hover{
+background:#555;
+}
+</style>
+</head>
+
+<body>
+
+<!-- شاشة التحميل -->
+<div id="loadingScreen" class="screen loading-bg">
+<div class="loading-bar-container">
+<div id="status" class="loading-status">INITIALIZING SYSTEM...</div>
+<div class="bar-outer"><div id="fill"></div></div>
+<div id="percent" style="margin-top:10px;font-weight:bold">0%</div>
+</div>
+</div>
+
+<!-- اللوبي -->
+<div id="lobbyScreen" class="screen lobby-bg hidden">
+<img src="https://i.postimg.cc/jdCdbsSg/1772768070037-fotor-bg-remover-2026030673441.png" class="character-model">
+<img id="battleBus" src="https://i.postimg.cc/zfP3WVv3/1772768983928-fotor-bg-remover-202603067509.png">
+
+<div class="play-section">
+<div class="mode-tag" id="modeTag">BATTLE ROYALE</div>
+<button id="play-btn">PLAY</button>
+</div>
+</div>
+
+<!-- نافذة الخطأ -->
+<div id="errorModal" class="modal hidden">
+<div class="modal-content">
+<h2>NETWORK ERROR</h2>
+<p>تعذر العثور على خادم. تحقق من اتصال الإنترنت.</p>
+<button class="close-btn" onclick="closeError()">CLOSE</button>
+</div>
+</div>
+
+<!-- الأصوات -->
+<audio id="lobbyMusic" loop src="https://cdn.pixabay.com/audio/2022/03/15/audio_3c7dcab2c1.mp3"></audio>
+<audio id="clickSound" src="https://cdn.pixabay.com/audio/2022/03/10/audio_3d2b7e7b77.mp3"></audio>
+
+<script>
+const fill=document.getElementById("fill");
+const percent=document.getElementById("percent");
+const status=document.getElementById("status");
+
+const loadingScreen=document.getElementById("loadingScreen");
+const lobbyScreen=document.getElementById("lobbyScreen");
+
+const playBtn=document.getElementById("play-btn");
+const errorModal=document.getElementById("errorModal");
+const modeTag=document.getElementById("modeTag");
+
+const bus=document.getElementById("battleBus");
+const clickSound=document.getElementById("clickSound");
+const music=document.getElementById("lobbyMusic");
+
+/* تشغيل موسيقى اللوبي عند أول نقرة */
+document.body.addEventListener("click",()=>{ music.play(); },{once:true});
+
+/* نظام التحميل */
+let progress=0;
+const loading=setInterval(()=>{
+progress+=0.5;
+if(progress>=100){
+progress=100;
+clearInterval(loading);
+status.innerText="READY!";
+setTimeout(()=>{
+loadingScreen.style.opacity="0";
+setTimeout(()=>{
+loadingScreen.classList.add("hidden");
+lobbyScreen.classList.remove("hidden");
+},1000);
+},500);
+}
+fill.style.width=progress+"%";
+percent.innerText=Math.floor(progress)+"%";
+if(progress>30&&progress<70) status.innerText="FETCHING SKINS...";
+if(progress>70) status.innerText="PREPARING BATTLE BUS...";
+},150);
+
+/* زر PLAY */
+playBtn.addEventListener("click",()=>{
+clickSound.play();
+playBtn.disabled=true;
+playBtn.innerText="SEARCHING...";
+modeTag.innerText="MATCHMAKING";
+modeTag.style.background="#ff9900";
+bus.style.display="block";
+
+/* بعد مدة حركة الباص تظهر نافذة الخطأ */
+setTimeout(()=>{
+showError();
+},5000); /* مدة الحركة 5 ثواني حسب سرعة الباص */
+});
+
+/* عرض الخطأ */
+function showError(){
+errorModal.classList.remove("hidden");
+playBtn.disabled=false;
+playBtn.innerText="PLAY";
+modeTag.innerText="BATTLE ROYALE";
+modeTag.style.background="#0066ff";
+bus.style.display="none";
+}
+
+function closeError(){
+errorModal.classList.add("hidden");
+}
+</script>
+
+</body>
+</html>
